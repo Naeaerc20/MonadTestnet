@@ -4,6 +4,7 @@
     "bestcaptchasolver": "^1.1.6",
     "bestcaptchasolver-client": "^1.1.6",
     "colors": "^1.4.0",
+    "chalk"："4.1.2",
     "console-clear": "^1.1.1",
     "ethers": "^5.7.2",
     "figlet": "^1.8.0",
