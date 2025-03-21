@@ -5,34 +5,91 @@ const path = require('path');
 const inquirer = require('inquirer');
 const chalk = require('chalk');
 const { ethers } = require('ethers');
+const axios = require('axios');
 
 // Load chain configuration and wallets
 const chain = require(path.join(__dirname, '../../utils/chain.js'));
 const wallets = require(path.join(__dirname, '../../utils/wallets.json'));
 
-// Minimal ERC165 ABI to check interface support
+// Para ERC1155 se usa un límite fijo para el escaneo (rango 0 a 100)
+const MAX_ERC1155_SCAN = 100;  
+
+// Minimal ERC165 ABI para chequear interfaces
 const ERC165_ABI = [
   "function supportsInterface(bytes4 interfaceID) external view returns (bool)"
 ];
 
-// Minimal ERC721 ABI
+// Minimal ERC721 ABI (incluye name, balanceOf, tokenOfOwnerByIndex, ownerOf, safeTransferFrom)
 const ERC721_ABI = [
+  "function name() view returns (string)",
   "function balanceOf(address owner) view returns (uint256)",
   "function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)",
-  "function safeTransferFrom(address from, address to, uint256 tokenId)"
+  "function safeTransferFrom(address from, address to, uint256 tokenId)",
+  "function ownerOf(uint256 tokenId) view returns (address)"
 ];
 
-// Minimal ERC1155 ABI
+// Minimal ERC1155 ABI (incluye balanceOf, safeTransferFrom y uri)
 const ERC1155_ABI = [
+  "function uri(uint256 tokenId) view returns (string)",
   "function balanceOf(address account, uint256 id) view returns (uint256)",
   "function safeTransferFrom(address from, address to, uint256 id, uint256 amount, bytes data)"
 ];
 
-// Default maximum token id to check in ERC1155 enumeration mode
-const MAX_TOKEN_ID = 10;
+// Headers fijos para la API
+const apiHeaders = {
+  'accept': 'application/json',
+  'x-api-key': '2ue2zbHIGR5RNqkFxKSiblL7R1P'
+};
+
+/**
+ * Consulta la nueva API para obtener los NFT de un wallet.
+ * Se usa la URL:
+ * https://api.blockvision.org/v2/monad/account/nfts?address=$ADDRESS&pageIndex=1
+ *
+ * Luego se filtra la respuesta para obtener los tokenId cuyo "contractAddress"
+ * (en minúsculas) coincide con el contrato ingresado.
+ */
+async function fetchTokenIds(walletAddress, userContractAddress) {
+  const url = `https://api.blockvision.org/v2/monad/account/nfts?address=${walletAddress}&pageIndex=1`;
+  try {
+    const response = await axios.get(url, { headers: apiHeaders });
+    if (response.data.code === 0 && response.data.result && Array.isArray(response.data.result.data)) {
+      const tokenIds = new Set();
+      // Iterar cada colección encontrada en la respuesta
+      for (const collection of response.data.result.data) {
+        if (collection.contractAddress && 
+            collection.contractAddress.toLowerCase() === userContractAddress.toLowerCase() &&
+            Array.isArray(collection.items)) {
+          for (const item of collection.items) {
+            if (item.tokenId) {
+              tokenIds.add(item.tokenId);
+            }
+          }
+        }
+      }
+      return Array.from(tokenIds);
+    }
+    return [];
+  } catch (err) {
+    console.error(chalk.red(`Error fetching API data for wallet [${walletAddress}]: ${err.message}`));
+    return [];
+  }
+}
+
+async function getTxOverrides(provider) {
+  const block = await provider.getBlock('latest');
+  const baseFee = block.baseFeePerGas; // BigNumber
+  const feeMultiplier = baseFee.mul(105).div(100); // baseFee * 1.05
+  const gasLimit = Math.floor(Math.random() * (180000 - 120000 + 1)) + 120000;
+  return {
+    gasLimit: gasLimit,
+    maxFeePerGas: feeMultiplier,
+    maxPriorityFeePerGas: feeMultiplier
+  };
+}
 
 async function main() {
-  // Prompt for basic inputs
+  // Preguntar por entradas básicas
   const baseAnswers = await inquirer.prompt([
     {
       type: 'input',
@@ -52,7 +109,7 @@ async function main() {
     }
   ]);
 
-  // Determine which wallets to check
+  // Determinar las wallets a revisar
   let walletsToCheck = [];
   if (baseAnswers.checkAll.toLowerCase() === 'y') {
     walletsToCheck = wallets;
@@ -68,16 +125,14 @@ async function main() {
     walletsToCheck = wallets.filter(w => ids.includes(w.id));
   }
 
-  // Setup provider and instance for interface check
   const provider = new ethers.providers.JsonRpcProvider(chain.RPC_URL);
   const baseContract = new ethers.Contract(baseAnswers.contractAddress, ERC165_ABI, provider);
 
-  // Determine contract type via ERC165 supportsInterface
+  // Determinar el tipo de contrato usando ERC165
   let contractType = null;
   try {
-    const isERC721 = await baseContract.supportsInterface("0x80ac58cd"); // ERC721 interfaceId
-    const isERC1155 = await baseContract.supportsInterface("0xd9b67a26"); // ERC1155 interfaceId
-
+    const isERC721 = await baseContract.supportsInterface("0x80ac58cd");
+    const isERC1155 = await baseContract.supportsInterface("0xd9b67a26");
     if (isERC721) {
       contractType = "ERC721";
     } else if (isERC1155) {
@@ -91,82 +146,111 @@ async function main() {
     process.exit(1);
   }
 
-  let tokenIdInput = null;
-  // For ERC1155, prompt for a token id; if left empty, we enumerate a default range.
-  if (contractType === "ERC1155") {
-    const tokenAnswer = await inquirer.prompt([
-      {
-        type: 'input',
-        name: 'tokenId',
-        message: 'Please Insert the Token ID you want to check/transfer (leave blank to enumerate a default range):'
-      }
-    ]);
-    tokenIdInput = tokenAnswer.tokenId.trim();
+  if (contractType === "ERC721") {
+    try {
+      const nftContractForInfo = new ethers.Contract(baseAnswers.contractAddress, ERC721_ABI, provider);
+      const nftName = await nftContractForInfo.name();
+      console.log(chalk.cyan(`NFT Name: ${nftName}`));
+    } catch (e) {
+      console.log(chalk.yellow("Could not retrieve NFT name."));
+    }
+  } else if (contractType === "ERC1155") {
+    console.log(chalk.cyan("ERC1155 contract detected."));
   }
 
-  console.log(chalk.cyan.bold(`\nChecking Availability of NFT with Contract - [${baseAnswers.contractAddress}] as ${contractType}\n`));
+  console.log(chalk.cyan.bold(`\nChecking NFT Availability with Contract [${baseAnswers.contractAddress}] as ${contractType}\n`));
 
-  // Process each wallet
-  for (const walletInfo of walletsToCheck) {
+  async function processWallet(walletInfo) {
     console.log(chalk.blue(`🔍 Checking Address - [${walletInfo.address}]`));
     try {
-      // Create a wallet instance connected to the provider
       const wallet = new ethers.Wallet(walletInfo.privateKey, provider);
-      
       if (contractType === "ERC721") {
         const nftContract = new ethers.Contract(baseAnswers.contractAddress, ERC721_ABI, wallet);
-        const balance = await nftContract.balanceOf(wallet.address);
-        if (balance.toNumber() === 0) {
-          console.log(chalk.red(`❌ No NFT Found for this Address\n`));
-        } else {
-          console.log(chalk.green(`✅ NFT Found! Initializing Transfer...`));
-          // Loop over each NFT and transfer it
-          for (let i = 0; i < balance.toNumber(); i++) {
-            const tokenId = await nftContract.tokenOfOwnerByIndex(wallet.address, i);
-            const tx = await nftContract.safeTransferFrom(wallet.address, baseAnswers.destinationWallet, tokenId);
-            console.log(chalk.yellow(`🚀 Transfer Tx Sent! - [${chain.TX_EXPLORER}${tx.hash}]`));
+        const balanceBN = await nftContract.balanceOf(wallet.address);
+        if (balanceBN.toNumber() === 0) {
+          console.log(chalk.red(`❌ No NFT Found (balanceOf = 0) for wallet [${wallet.address}]\n`));
+          return;
+        }
+        // Usar la API para obtener los tokenIds correspondientes al contrato ingresado
+        const tokenIds = await fetchTokenIds(wallet.address, baseAnswers.contractAddress);
+        if (!tokenIds || tokenIds.length === 0) {
+          console.log(chalk.red(`❌ No NFT Found via API for wallet [${wallet.address}]\n`));
+          return;
+        }
+        console.log(chalk.green(`✅ NFT(s) found for wallet [${wallet.address}]: Token IDs: [${tokenIds.join(', ')}]`));
+        for (const tokenId of tokenIds) {
+          const overrides = await getTxOverrides(provider);
+          try {
+            const tx = await nftContract.safeTransferFrom(wallet.address, baseAnswers.destinationWallet, tokenId, overrides);
+            console.log(chalk.yellow(`🚀 Transfer Tx Sent for NFT ID [${tokenId}]! - [${chain.TX_EXPLORER}${tx.hash}]`));
             const receipt = await tx.wait(1);
             console.log(chalk.magenta(`📦 Tx Confirmed in Block - [${receipt.blockNumber}]\n`));
+          } catch (transferError) {
+            console.error(chalk.red(`Error transferring NFT ID [${tokenId}] from ${wallet.address}: ${transferError.message}\n`));
           }
         }
       } else if (contractType === "ERC1155") {
         const nftContract = new ethers.Contract(baseAnswers.contractAddress, ERC1155_ABI, wallet);
-        // If user provided a token ID, use it; otherwise, enumerate a range of token IDs.
-        if (tokenIdInput) {
-          const balance = await nftContract.balanceOf(wallet.address, tokenIdInput);
-          if (balance.toNumber() === 0) {
-            console.log(chalk.red(`❌ No NFT Found for Token ID [${tokenIdInput}] on this Address\n`));
-          } else {
-            console.log(chalk.green(`✅ NFT Found! Initializing Transfer for Token ID [${tokenIdInput}]...`));
-            const tx = await nftContract.safeTransferFrom(wallet.address, baseAnswers.destinationWallet, tokenIdInput, balance, "0x");
-            console.log(chalk.yellow(`🚀 Transfer Tx Sent! - [${chain.TX_EXPLORER}${tx.hash}]`));
-            const receipt = await tx.wait(1);
-            console.log(chalk.magenta(`📦 Tx Confirmed in Block - [${receipt.blockNumber}]\n`));
-          }
+        let tokenIdToUse = null;
+        let balanceBN;
+        if (false) {
+          // Si se quisiera permitir ingreso manual, se podría usar tokenIdInput.
+          tokenIdToUse = tokenIdInput;
+        }
+        // Usar la API para obtener tokenIds para ERC1155
+        const tokenIds = await fetchTokenIds(wallet.address, baseAnswers.contractAddress);
+        if (tokenIds && tokenIds.length > 0) {
+          // Se usa el primer tokenId encontrado para ERC1155 (ya que es único en el contrato)
+          tokenIdToUse = tokenIds[0];
         } else {
-          // Enumerate a default range (0 to MAX_TOKEN_ID) to detect tokens with balance > 0.
-          let found = false;
-          for (let tokenId = 0; tokenId <= MAX_TOKEN_ID; tokenId++) {
-            const balance = await nftContract.balanceOf(wallet.address, tokenId);
-            if (balance.toNumber() > 0) {
-              found = true;
-              console.log(chalk.green(`✅ NFT Found! Initializing Transfer for Token ID [${tokenId}]...\n`));
-              const tx = await nftContract.safeTransferFrom(wallet.address, baseAnswers.destinationWallet, tokenId, balance, "0x");
-              console.log(chalk.yellow(`🚀 Transfer Tx Sent! - [${chain.TX_EXPLORER}${tx.hash}]`));
-              const receipt = await tx.wait(1);
-              console.log(chalk.magenta(`📦 Tx Confirmed in Block - [${receipt.blockNumber}]\n`));
+          // Si la API no retorna nada, escanear el rango 0 a MAX_ERC1155_SCAN
+          for (let tokenId = 0; tokenId <= MAX_ERC1155_SCAN; tokenId++) {
+            balanceBN = await nftContract.balanceOf(wallet.address, tokenId);
+            if (balanceBN.toNumber() > 0) {
+              tokenIdToUse = tokenId;
+              break;
             }
           }
-          if (!found) {
-            console.log(chalk.red(`❌ No NFT Found in the default token range on this Address\n`));
+        }
+        if (tokenIdToUse === null) {
+          console.log(chalk.red(`❌ No ERC1155 tokens found for wallet [${wallet.address}]\n`));
+          return;
+        }
+        console.log(chalk.green(`✅ ERC1155 token found for wallet [${wallet.address}]: Token ID: [${tokenIdToUse}]`));
+        // Una vez se detecta el tokenId en la primera wallet, se fija para todas las siguientes
+        if (!currentERC1155ID) {
+          currentERC1155ID = tokenIdToUse;
+        }
+        // Obtener la URI solo una vez (si está disponible)
+        if (!cachedERC1155URI) {
+          try {
+            cachedERC1155URI = await nftContract.uri(currentERC1155ID);
+            console.log(chalk.cyan(`Token URI for [${currentERC1155ID}]: ${cachedERC1155URI}`));
+          } catch (e) {
+            console.log(chalk.yellow(`Token URI not available for token ID [${currentERC1155ID}].`));
           }
+        }
+        balanceBN = await nftContract.balanceOf(wallet.address, currentERC1155ID);
+        const overrides = await getTxOverrides(provider);
+        try {
+          const tx = await nftContract.safeTransferFrom(wallet.address, baseAnswers.destinationWallet, currentERC1155ID, balanceBN, "0x", overrides);
+          console.log(chalk.yellow(`🚀 Transfer Tx Sent for ERC1155 Token ID [${currentERC1155ID}]! - [${chain.TX_EXPLORER}${tx.hash}]`));
+          const receipt = await tx.wait(1);
+          console.log(chalk.magenta(`📦 Tx Confirmed in Block - [${receipt.blockNumber}]\n`));
+        } catch (transferError) {
+          console.error(chalk.red(`Error transferring ERC1155 token ID [${currentERC1155ID}] from ${wallet.address}: ${transferError.message}\n`));
         }
       }
     } catch (err) {
       console.error(chalk.red(`Error processing wallet ${walletInfo.address}: ${err.message}\n`));
     }
   }
-  
+
+  // Procesar todas las wallets secuencialmente
+  for (const walletInfo of walletsToCheck) {
+    await processWallet(walletInfo);
+  }
+
   console.log(chalk.green.bold('All wallet checks completed.'));
 }
 

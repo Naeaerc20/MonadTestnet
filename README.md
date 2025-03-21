@@ -4,6 +4,7 @@ Welcome to Monad Testnet, this script will help you to be well positioned for fu
 Testnet Apps Interactions, Protocols, Contract Deployment, etc... All possible stuff related to Monad
 
 ``` bash
+
 MonadTestnet/
 ├── actions/
 │   ├── deploy_contract/
@@ -46,11 +47,11 @@ MonadTestnet/
 │   │   ├── random.js         # Random swap script for BeanSwap (performs random swaps automatically).
 │   │   └── liquidate.js      # Dedicated script to swap all available tokens back to MON.
 │   ├── Kintzu/
-│   │   ├── index.js          # Main script for the Kintzu module (to be implemented).
-│   │   └── ABI.js            # ABI definitions for Kintzu contracts (to be implemented).
+│   │   ├── index.js          # Main script for the Kintzu module.
+│   │   └── ABI.js            # ABI definitions for Kintzu contracts.
 │   ├── Synnax/
-│   │   ├── index.js          # Main script for the Synnax module (to be implemented).
-│   │   └── ABI.js            # ABI definitions for Synnax contracts (to be implemented).
+│   │   ├── index.js          # Main script for the Synnax module.
+│   │   └── ABI.js            # ABI definitions for Synnax contracs.
 │   ├── Uniswap/
 │   │   ├── swap.js           # Interactive swap script for Uniswap operations.
 │   │   ├── ABI.js            # Exports ABI definitions for Uniswap contracts.
@@ -87,13 +88,19 @@ MonadTestnet/
 │   │       └── apis.js       # Contains API functions (e.g., getSignatureToBuy) for domain registration.
 │   ├── OctoSwap/
 │   │   ├── ABI.js            # Exports ABI definitions for OctoSwap's router, liquidity, random swap, and swap contracts.
-│   │   ├── liquidity.js      # (To be implemented) Script for managing liquidity operations on OctoSwap.
+│   │   ├── liquidity.js      # To be implemented – Script for managing liquidity operations on OctoSwap.
 │   │   ├── random.js         # Random swap script for OctoSwap (performs random swaps automatically under custom rules).
 │   │   ├── liquidate.js      # Dedicated script to swap all available tokens back to MON.
 │   │   └── swap.js           # Interactive swap script for OctoSwap with token approvals, dynamic gas settings, and support for MON/WMON wrapping/unwrapping.
 │   ├── Magma/                # New Module: Magma
 │   │   ├── index.js          # Main script for the Magma module; handles core functionalities for Magma-related actions.
 │   │   └── ABI.js            # Exports the ABI definitions for Magma contracts; used to interact with Magma-specific smart contracts.
+│   └── DirolSwap/            # New Module: DirolSwap
+│       ├── ABI.js            # Exports the ABI definitions for DirolSwap contracts. To be Implemented.
+│       ├── liquidity.js      # Script for managing liquidity operations on DirolSwap. To be Implemented.
+│       ├── swap.js           # Interactive swap script for DirolSwap operations. To be Implemented.
+│       └── scripts/
+│           └── apis.js       # Contains API functions for DirolSwap operations. To be Implemented.
 ├── faucets/
 │   ├── official_faucet/
 │   │   ├── claim.js          # Script to claim tokens from the official faucet.
