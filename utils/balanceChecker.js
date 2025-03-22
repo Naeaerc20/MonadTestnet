@@ -1,5 +1,3 @@
-// utils/balanceChecker.js
-
 const fs = require('fs');
 const path = require('path');
 const { ethers } = require('ethers');
@@ -25,8 +23,8 @@ async function checkBalances() {
       const balanceWei = await provider.getBalance(wallet.address);
       // Convertir de wei a la unidad estándar
       const balance = ethers.utils.formatEther(balanceWei);
-      // Imprimir en el formato requerido, incluyendo un icono y los corchetes
-      console.log(`💰 Wallet - [${wallet.address}] Has currently [${balance}] ${chain.SYMBOL}`);
+      // Imprimir en el formato requerido
+      console.log(`💰 Wallet - ID - [${wallet.id}] - [${wallet.address}] Has currently [${balance}] ${chain.SYMBOL}`);
     } catch (error) {
       console.error(`Error al obtener el balance de la wallet ${wallet.address}:`, error);
     }
