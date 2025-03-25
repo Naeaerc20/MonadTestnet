@@ -105,13 +105,13 @@ async function claimFundsFromFaucet() {
       type: "list",
       name: "choice",
       message: "On which wallets would you like to claim faucet?",
-      choices: ["All of them", "Specific IDs"]
+      choices: ["All of them", "Specific IDs", "Claim From Specific To Specific IDs"]
     }
   ]);
-  let selectedWallets;
+  let selectedWallets = [];
   if (choice === "All of them") {
     selectedWallets = wallets;
-  } else {
+  } else if (choice === "Specific IDs") {
     const { ids } = await inquirer.prompt([
       {
         type: "input",
@@ -121,21 +121,45 @@ async function claimFundsFromFaucet() {
     ]);
     const idArray = ids.split(" ").map(id => parseInt(id.trim()));
     selectedWallets = wallets.filter(w => idArray.includes(w.id));
+  } else if (choice === "Claim From Specific To Specific IDs") {
+    const { minID, maxID } = await inquirer.prompt([
+      {
+        type: "input",
+        name: "minID",
+        message: "Enter the minimum wallet ID to start claiming:",
+        validate: input => !isNaN(input) && Number(input) >= 0 || "Please enter a valid non-negative number"
+      },
+      {
+        type: "input",
+        name: "maxID",
+        message: "Enter the maximum wallet ID to stop claiming:",
+        validate: input => !isNaN(input) && Number(input) >= 0 || "Please enter a valid non-negative number"
+      }
+    ]);
+    const min = Number(minID);
+    const max = Number(maxID);
+    selectedWallets = wallets.filter(w => w.id >= min && w.id <= max);
   }
+  
+  if (selectedWallets.length === 0) {
+    console.log("No wallets found for the specified option.");
+    return;
+  }
+  
   const provider = new ethers.providers.JsonRpcProvider(RPC_URL, CHAIN_ID);
   
   // Claim gas settings: random gasLimit between 120000 and 200000, fee = baseFee + 15%
   const feeData = await provider.getFeeData();
   let baseFee = feeData.baseFeePerGas || feeData.maxFeePerGas;
   if (!baseFee) baseFee = ethers.BigNumber.from(0);
-  const extra = baseFee.mul(15).div(100);
+  const extra = baseFee.mul(2).div(100);
   const newFee = baseFee.add(extra);
   
-  // Mostrar el balance actual del contrato Faucet
+  // Show the current balance of the Faucet contract
   const contractBalance = await provider.getBalance(FAUCET_ADDRESS);
   console.log(`💰 Faucet Balance: ${ethers.utils.formatEther(contractBalance)} ${SYMBOL}`);
   
-  // Solicitar la cantidad a reclamar (in MON) para todas las wallets
+  // Ask for the claim amount (in MON) for each wallet
   const { claimAmount } = await inquirer.prompt([
     {
       type: "input",
@@ -144,7 +168,7 @@ async function claimFundsFromFaucet() {
     }
   ]);
   
-  // Usar DEV_WALLET como relayer para llamar a claimFundsFor para cada wallet
+  // Use DEV_WALLET as relayer to call claimFundsFor for each wallet
   const devWallet = new ethers.Wallet(DEV_PRIVATE_KEY, provider);
   const faucetContractWithDev = new ethers.Contract(FAUCET_ADDRESS, FAUCET_ABI, devWallet);
   
@@ -154,7 +178,7 @@ async function claimFundsFromFaucet() {
       ethers.utils.parseEther(claimAmount),
       walletData.address,
       {
-        gasLimit: Math.floor(Math.random() * (200000 - 120000 + 1)) + 120000,
+        gasLimit: Math.floor(Math.random() * (120000 - 80000 + 1)) + 80000,
         maxFeePerGas: newFee,
         maxPriorityFeePerGas: newFee
       }
@@ -188,7 +212,7 @@ async function manageWhitelist() {
   ]);
   for (const walletData of wallets) {
     const walletAddress = walletData.address;
-    // Llamar a la función isWhitelited definida en el contrato
+    // Call the function isWhitelited defined in the contract
     const isWhitelisted = await faucetContract.isWhitelited(walletAddress);
     if (action === "Add Wallets To Whitelist") {
       if (isWhitelisted) {
