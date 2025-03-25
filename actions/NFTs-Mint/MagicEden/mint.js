@@ -6,8 +6,6 @@ const chainConfig = require("../../../utils/chain.js");
 const walletsData = require("../../../utils/wallets.json");
 const { ABI } = require("./ABI");
 
-let globalMintVariant = "fourParams";
-
 function getRandomGasLimit(min = 180000, max = 280000) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -16,7 +14,7 @@ function formatTimeComponents(date) {
   const hours = date.getUTCHours().toString().padStart(2, "0");
   const minutes = date.getUTCMinutes().toString().padStart(2, "0");
   const seconds = date.getUTCSeconds().toString().padStart(2, "0");
-  return `${hours}/${minutes}/${seconds}`;
+  return `${hours}:${minutes}:${seconds}`;
 }
 
 function formatDateComponents(date) {
@@ -63,12 +61,12 @@ async function getConfigWithFallback(contract) {
   }
 }
 
-async function sendMint(contractAddress, wallet, gasLimit, fee, explorerUrl, walletId, mintVariant, mintPrice) {
+async function sendMint(contractAddress, wallet, gasLimit, fee, explorerUrl, walletId, initialMintVariant, mintPrice) {
   const contractWithWallet = new ethers.Contract(contractAddress, ABI, wallet);
-  console.log(chalk.blue(`Wallet ID [${walletId}] is minting 1 NFT(s).`));
+  console.log(chalk.blue(`Wallet ID [${walletId}] is minting 1 NFT(s) using ${initialMintVariant} as first option.`));
   let tx;
   try {
-    if (mintVariant === "fourParams") {
+    if (initialMintVariant === "fourParams") {
       tx = await contractWithWallet["mintPublic(address,uint256,uint256,bytes)"](
         wallet.address, 0, 1, "0x",
         { gasLimit, maxFeePerGas: fee, maxPriorityFeePerGas: fee, value: mintPrice }
@@ -84,18 +82,32 @@ async function sendMint(contractAddress, wallet, gasLimit, fee, explorerUrl, wal
     console.log(chalk.magenta(`Transaction confirmed in Block [${receipt.blockNumber}] for Wallet ID [${walletId}].`));
   } catch (err) {
     if (err.code === ethers.errors.CALL_EXCEPTION || err.message.includes("CALL_EXCEPTION")) {
-      console.error(chalk.red(`CALL_EXCEPTION for Wallet [${walletId}] using fourParams. Retrying with twoParams...`));
-      try {
-        tx = await contractWithWallet["mintPublic(address,uint256)"](
-          wallet.address, 1,
-          { gasLimit, maxFeePerGas: fee, maxPriorityFeePerGas: fee, value: mintPrice }
-        );
-        globalMintVariant = "twoParams";
-        console.log(chalk.green(`Mint transaction sent! Wallet ID [${walletId}] - [${explorerUrl}${tx.hash}]`));
-        const receipt = await tx.wait();
-        console.log(chalk.magenta(`Transaction confirmed in Block [${receipt.blockNumber}] for Wallet ID [${walletId}].`));
-      } catch (retryErr) {
-        console.error(chalk.red(`CALL_EXCEPTION for Wallet [${walletId}] on retry with twoParams.`));
+      if (initialMintVariant === "fourParams") {
+        console.error(chalk.red(`CALL_EXCEPTION for Wallet [${walletId}] using fourParams. Retrying with twoParams...`));
+        try {
+          tx = await contractWithWallet["mintPublic(address,uint256)"](
+            wallet.address, 1,
+            { gasLimit, maxFeePerGas: fee, maxPriorityFeePerGas: fee, value: mintPrice }
+          );
+          console.log(chalk.green(`Mint transaction sent! Wallet ID [${walletId}] - [${explorerUrl}${tx.hash}]`));
+          const receipt = await tx.wait();
+          console.log(chalk.magenta(`Transaction confirmed in Block [${receipt.blockNumber}] for Wallet ID [${walletId}].`));
+        } catch (retryErr) {
+          console.error(chalk.red(`CALL_EXCEPTION for Wallet [${walletId}] on retry with twoParams.`));
+        }
+      } else if (initialMintVariant === "twoParams") {
+        console.error(chalk.red(`CALL_EXCEPTION for Wallet [${walletId}] using twoParams. Retrying with fourParams...`));
+        try {
+          tx = await contractWithWallet["mintPublic(address,uint256,uint256,bytes)"](
+            wallet.address, 0, 1, "0x",
+            { gasLimit, maxFeePerGas: fee, maxPriorityFeePerGas: fee, value: mintPrice }
+          );
+          console.log(chalk.green(`Mint transaction sent! Wallet ID [${walletId}] - [${explorerUrl}${tx.hash}]`));
+          const receipt = await tx.wait();
+          console.log(chalk.magenta(`Transaction confirmed in Block [${receipt.blockNumber}] for Wallet ID [${walletId}].`));
+        } catch (retryErr) {
+          console.error(chalk.red(`CALL_EXCEPTION for Wallet [${walletId}] on retry with fourParams.`));
+        }
       }
     } else if (err.message.includes("INSUFFICIENT_FUNDS")) {
       console.error(chalk.yellow(`Wallet [${walletId}] has insufficient funds. Skipping...`));
@@ -108,11 +120,41 @@ async function sendMint(contractAddress, wallet, gasLimit, fee, explorerUrl, wal
 async function main() {
   const provider = new ethers.providers.JsonRpcProvider(chainConfig.RPC_URL, chainConfig.CHAIN_ID);
   const inputResponses = await inquirer.prompt([
-    { type: "list", name: "mintOption", message: "Choose your Minting Mode:", choices: ["Instant Mint", "Scheduled Mint"] },
-    { type: "input", name: "contractAddress", message: "Please enter the NFT contract address you'd like to mint:" },
-    { type: "confirm", name: "useContractPrice", message: "Do you want to retrieve MINT_PRICE from the contract?", default: true },
-    { type: "list", name: "walletChoice", message: "Which wallets would you like to use for minting?", choices: ["All wallets", "Specific IDs"] },
-    { type: "input", name: "walletIDs", message: "Enter wallet IDs separated by spaces:", when: answers => answers.walletChoice === "Specific IDs" }
+    { 
+      type: "list", 
+      name: "mintOption", 
+      message: "Choose your Minting Mode:", 
+      choices: ["Instant Mint", "Scheduled Mint"] 
+    },
+    { 
+      type: "input", 
+      name: "contractAddress", 
+      message: "Please enter the NFT contract address you'd like to mint:" 
+    },
+    { 
+      type: "confirm", 
+      name: "useContractPrice", 
+      message: "Do you want to retrieve the MINT_PRICE from the contract?", 
+      default: true 
+    },
+    { 
+      type: "list", 
+      name: "walletChoice", 
+      message: "Which wallets would you like to use for minting?", 
+      choices: ["All wallets", "Specific IDs"] 
+    },
+    { 
+      type: "input", 
+      name: "walletIDs", 
+      message: "Enter wallet IDs separated by spaces:", 
+      when: answers => answers.walletChoice === "Specific IDs" 
+    },
+    { 
+      type: "list", 
+      name: "initialMintVariant", 
+      message: "Choose the order of parameters to use first:", 
+      choices: ["TwoParams", "FourParams"] 
+    }
   ]);
 
   let finalConfig = null;
@@ -147,12 +189,16 @@ async function main() {
   } else {
     console.log(chalk.red("MINT_PRICE was not obtained from the contract or is 0. Please insert MINT_PRICE:"));
     const { manualPrice } = await inquirer.prompt([
-      { type: "input", name: "manualPrice", message: "Please insert MINT_PRICE:", validate: input => !isNaN(input) && Number(input) >= 0 }
+      { 
+        type: "input", 
+        name: "manualPrice", 
+        message: "Please insert MINT_PRICE:", 
+        validate: input => !isNaN(input) && Number(input) >= 0 
+      }
     ]);
     mintPrice = ethers.utils.parseEther(manualPrice.toString());
   }
   
-  globalMintVariant = "fourParams";
   console.log(chalk.blue(`MINT_PRICE is set to - [${ethers.utils.formatEther(mintPrice)}] MON`));
 
   let startTime;
@@ -163,9 +209,21 @@ async function main() {
       scheduledDate = new Date(startTime * 1000);
     } else {
       const timeInput = await inquirer.prompt([
-        { type: "input", name: "hour", message: "Please Insert Minting Start Time (in UTC format)\nHour (24h):" },
-        { type: "input", name: "minute", message: "Minute:" },
-        { type: "input", name: "second", message: "Second:" }
+        { 
+          type: "input", 
+          name: "hour", 
+          message: "Please enter the Minting Start Time (in UTC format)\nHour (24h):" 
+        },
+        { 
+          type: "input", 
+          name: "minute", 
+          message: "Minute:" 
+        },
+        { 
+          type: "input", 
+          name: "second", 
+          message: "Second:" 
+        }
       ]);
       const currentDate = new Date();
       scheduledDate = new Date(Date.UTC(
@@ -176,7 +234,7 @@ async function main() {
         Number(timeInput.minute),
         Number(timeInput.second)
       ));
-      // Si el horario ya pasó en el día actual, se programa para el día siguiente.
+      // If the specified time has already passed today, schedule for the next day.
       if (scheduledDate.getTime() <= currentDate.getTime()) {
          scheduledDate.setUTCDate(scheduledDate.getUTCDate() + 1);
       }
@@ -189,7 +247,7 @@ async function main() {
       const formattedTime = formatTimeComponents(scheduledDate);
       const formattedDate = formatDateComponents(scheduledDate);
       console.log(chalk.yellow("Scheduling Mint..."));
-      console.log(chalk.yellow(`Mint has been Scheduled for - [${formattedTime}] UTC at [${formattedDate}]`));
+      console.log(chalk.yellow(`Mint has been scheduled for - [${formattedTime}] UTC on [${formattedDate}]`));
       await new Promise(resolve => setTimeout(resolve, delay));
       console.log(chalk.yellow("Mint time reached! Starting mint..."));
     } else {
@@ -223,7 +281,7 @@ async function main() {
         fee,
         explorerUrl,
         walletData.id,
-        globalMintVariant,
+        inputResponses.initialMintVariant,
         mintPrice
       );
     })

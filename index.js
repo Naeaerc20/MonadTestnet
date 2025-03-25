@@ -37,7 +37,9 @@ async function specificAppMenu() {
       choices: [
         { name: '1. Nad.Fun', value: 'nadfun' },
         { name: '2. MagicEden', value: 'magiceden' },
-        { name: '3. Nad.Domains', value: 'naddomains' }
+        { name: '3. Nad.Domains', value: 'naddomains' },
+        { name: '4. Manage Faucet', value: 'manageFaucet' },
+        { name: '5. Transfer NFTs', value: 'transferNFTs' }
       ]
     }
   ]);
@@ -113,6 +115,12 @@ async function specificAppMenu() {
   } else if (appChoice === 'naddomains') {
     console.log('Launching Nad.Domains...'.green);
     await runScript('actions/Nad.Domains/index.js');
+  } else if (appChoice === 'manageFaucet') {
+    console.log('Managing Faucet...'.green);
+    await runScript('strategies/for_faucet/transfers.js');
+  } else if (appChoice === 'transferNFTs') {
+    console.log('Transferring NFTs...'.green);
+    await runScript('strategies/nfts/transfers.js');
   }
   await pause();
 }
@@ -334,6 +342,7 @@ async function mainMenu() {
           choices: [
             { name: "1. Number of Tx's Made", value: 'txCount' },
             { name: '2. Current Balance Amount', value: 'balance' },
+            { name: '3. Check NFTs Owneds', value: 'nftOwned' }
           ],
         },
       ]);
@@ -343,6 +352,9 @@ async function mainMenu() {
       } else if (walletInfo === 'balance') {
         console.log('Checking current balance...'.green);
         await runScript('utils/balanceChecker.js');
+      } else if (walletInfo === 'nftOwned') {
+        console.log('Checking NFTs Owneds...'.green);
+        await runScript('strategies/nfts/check_nft_owned.js');
       }
       await pause();
       break;

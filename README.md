@@ -120,13 +120,15 @@ MonadTestnet/
 │       └── scripts/
 │           └── apis.js       # API calls for the trade faucet (to be implemented).
 ├── strategies/
-│   └── for_faucet/
-│       ├── help.txt          # Help file with instructions on how to use the faucet.
-│       ├── deploy.js         # Script to compile and deploy the faucet contract on the testnet.
-│       ├── faucetABI.json    # JSON file exporting the ABI definitions and deployed address for the Faucet contract.
-│       ├── faucet.sol        # Solidity contract implementing faucet functionalities (deposit, withdrawal, whitelist management, claims).
-│       └── transfers.js      # Script for interacting with the Faucet contract (fund transfers, claims, whitelist management).
-├── utils/                    # Utility modules for common functions and configurations
+│   ├── for_faucet/
+│   │   ├── help.txt          # Help file with instructions on how to use the faucet.
+│   │   ├── deploy.js         # Script to compile and deploy the faucet contract on the testnet.
+│   │   ├── faucetABI.json    # JSON file exporting the ABI definitions and deployed address for the Faucet contract.
+│   │   ├── faucet.sol        # Solidity contract implementing faucet functionalities (deposit, withdrawal, whitelist management, claims).
+│   │   └── transfers.js      # Script for interacting with the Faucet contract (fund transfers, claims, whitelist management).
+│   └── nfts/
+│       └── transfers.js      # Script for managing NFT transfers (minting, burning, and transferring NFTs on the testnet).
+├── utils/                    # Utility modules for common functions and configurations.
 │   ├── balanceChecker.js     # Script to check wallet balances.
 │   ├── chain.js              # Exports network configuration (RPC_URL, CHAIN_ID, SYMBOL, TX_EXPLORER, etc.).
 │   ├── txChecker.js          # Script to monitor transaction statuses.
