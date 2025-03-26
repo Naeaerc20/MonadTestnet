@@ -30,7 +30,7 @@ async function getConfigWithFallback(contract) {
     config = await contract.getConfig();
     if (!config.publicStage.price.eq(0)) {
       console.log(chalk.green("getConfig() without parameters succeeded."));
-      return { config, variant: "fourParams" };
+      return { config, variant: "fourparams" };
     } else {
       console.error(chalk.red("getConfig() without parameters returned price 0, trying fallback tokenIds."));
     }
@@ -45,7 +45,7 @@ async function getConfigWithFallback(contract) {
       fallbackConfig = await contract["getConfig(uint256)"](id);
       console.log(chalk.green(`getConfig(uint256) with tokenId ${id} succeeded.`));
       if (!fallbackConfig.publicStage.price.eq(0)) {
-        return { config: fallbackConfig, variant: "fourParams" };
+        return { config: fallbackConfig, variant: "fourparams" };
       } else {
         console.error(chalk.red(`getConfig(uint256) with tokenId ${id} returned price 0.`));
       }
@@ -55,7 +55,7 @@ async function getConfigWithFallback(contract) {
   }
   if (fallbackConfig) {
     console.log(chalk.yellow("All fallback getConfig calls returned price 0. Using last returned config."));
-    return { config: fallbackConfig, variant: "fourParams" };
+    return { config: fallbackConfig, variant: "fourparams" };
   } else {
     throw new Error("Unable to retrieve configuration using getConfig fallback.");
   }
@@ -64,9 +64,9 @@ async function getConfigWithFallback(contract) {
 async function sendMint(contractAddress, wallet, gasLimit, fee, explorerUrl, walletId, initialMintVariant, mintPrice) {
   const contractWithWallet = new ethers.Contract(contractAddress, ABI, wallet);
   console.log(chalk.blue(`Wallet ID [${walletId}] is minting 1 NFT(s) using ${initialMintVariant} as first option.`));
-  let tx;
+  let tx, receipt;
   try {
-    if (initialMintVariant === "fourParams") {
+    if (initialMintVariant === "fourparams") {
       tx = await contractWithWallet["mintPublic(address,uint256,uint256,bytes)"](
         wallet.address, 0, 1, "0x",
         { gasLimit, maxFeePerGas: fee, maxPriorityFeePerGas: fee, value: mintPrice }
@@ -78,35 +78,32 @@ async function sendMint(contractAddress, wallet, gasLimit, fee, explorerUrl, wal
       );
     }
     console.log(chalk.green(`Mint transaction sent! Wallet ID [${walletId}] - [${explorerUrl}${tx.hash}]`));
-    const receipt = await tx.wait();
-    console.log(chalk.magenta(`Transaction confirmed in Block [${receipt.blockNumber}] for Wallet ID [${walletId}].`));
+    receipt = await tx.wait();
   } catch (err) {
     if (err.code === ethers.errors.CALL_EXCEPTION || err.message.includes("CALL_EXCEPTION")) {
-      if (initialMintVariant === "fourParams") {
-        console.error(chalk.red(`CALL_EXCEPTION for Wallet [${walletId}] using fourParams. Retrying with twoParams...`));
+      if (initialMintVariant === "fourparams") {
+        console.error(chalk.red(`CALL_EXCEPTION for Wallet [${walletId}] using fourparams. Retrying with twoparams...`));
         try {
           tx = await contractWithWallet["mintPublic(address,uint256)"](
             wallet.address, 1,
             { gasLimit, maxFeePerGas: fee, maxPriorityFeePerGas: fee, value: mintPrice }
           );
           console.log(chalk.green(`Mint transaction sent! Wallet ID [${walletId}] - [${explorerUrl}${tx.hash}]`));
-          const receipt = await tx.wait();
-          console.log(chalk.magenta(`Transaction confirmed in Block [${receipt.blockNumber}] for Wallet ID [${walletId}].`));
+          receipt = await tx.wait();
         } catch (retryErr) {
-          console.error(chalk.red(`CALL_EXCEPTION for Wallet [${walletId}] on retry with twoParams.`));
+          console.error(chalk.red(`CALL_EXCEPTION for Wallet [${walletId}] on retry with twoparams.`));
         }
-      } else if (initialMintVariant === "twoParams") {
-        console.error(chalk.red(`CALL_EXCEPTION for Wallet [${walletId}] using twoParams. Retrying with fourParams...`));
+      } else if (initialMintVariant === "twoparams") {
+        console.error(chalk.red(`CALL_EXCEPTION for Wallet [${walletId}] using twoparams. Retrying with fourparams...`));
         try {
           tx = await contractWithWallet["mintPublic(address,uint256,uint256,bytes)"](
             wallet.address, 0, 1, "0x",
             { gasLimit, maxFeePerGas: fee, maxPriorityFeePerGas: fee, value: mintPrice }
           );
           console.log(chalk.green(`Mint transaction sent! Wallet ID [${walletId}] - [${explorerUrl}${tx.hash}]`));
-          const receipt = await tx.wait();
-          console.log(chalk.magenta(`Transaction confirmed in Block [${receipt.blockNumber}] for Wallet ID [${walletId}].`));
+          receipt = await tx.wait();
         } catch (retryErr) {
-          console.error(chalk.red(`CALL_EXCEPTION for Wallet [${walletId}] on retry with fourParams.`));
+          console.error(chalk.red(`CALL_EXCEPTION for Wallet [${walletId}] on retry with fourparams.`));
         }
       }
     } else if (err.message.includes("INSUFFICIENT_FUNDS")) {
@@ -114,6 +111,9 @@ async function sendMint(contractAddress, wallet, gasLimit, fee, explorerUrl, wal
     } else {
       console.error(chalk.red(`Error minting with Wallet [${walletId}]:`), err);
     }
+  }
+  if (receipt) {
+    console.log(chalk.magenta(`Transaction confirmed in Block [${receipt.blockNumber}] for Wallet ID [${walletId}].`));
   }
 }
 
@@ -153,7 +153,7 @@ async function main() {
       type: "list", 
       name: "initialMintVariant", 
       message: "Choose the order of parameters to use first:", 
-      choices: ["TwoParams", "FourParams"] 
+      choices: ["twoparams", "fourparams"]
     }
   ]);
 
@@ -234,7 +234,7 @@ async function main() {
         Number(timeInput.minute),
         Number(timeInput.second)
       ));
-      // If the specified time has already passed today, schedule for the next day.
+      // Si la hora especificada ya pasó hoy, se agenda para el día siguiente.
       if (scheduledDate.getTime() <= currentDate.getTime()) {
          scheduledDate.setUTCDate(scheduledDate.getUTCDate() + 1);
       }
