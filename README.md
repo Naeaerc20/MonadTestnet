@@ -51,7 +51,7 @@ MonadTestnet/
 │   │   └── ABI.js            # ABI definitions for Kintzu contracts.
 │   ├── Synnax/
 │   │   ├── index.js          # Main script for the Synnax module.
-│   │   └── ABI.js            # ABI definitions for Synnax contracs.
+│   │   └── ABI.js            # ABI definitions for Synnax contracts.
 │   ├── Uniswap/
 │   │   ├── swap.js           # Interactive swap script for Uniswap operations.
 │   │   ├── ABI.js            # Exports ABI definitions for Uniswap contracts.
@@ -92,15 +92,21 @@ MonadTestnet/
 │   │   ├── random.js         # Random swap script for OctoSwap (performs random swaps automatically under custom rules).
 │   │   ├── liquidate.js      # Dedicated script to swap all available tokens back to MON.
 │   │   └── swap.js           # Interactive swap script for OctoSwap with token approvals, dynamic gas settings, and support for MON/WMON wrapping/unwrapping.
-│   ├── Magma/                # New Module: Magma
+│   ├── Magma/
 │   │   ├── index.js          # Main script for the Magma module; handles core functionalities for Magma-related actions.
 │   │   └── ABI.js            # Exports the ABI definitions for Magma contracts; used to interact with Magma-specific smart contracts.
-│   └── DirolSwap/            # New Module: DirolSwap
-│       ├── ABI.js            # Exports the ABI definitions for DirolSwap contracts. To be Implemented.
-│       ├── liquidity.js      # Script for managing liquidity operations on DirolSwap. To be Implemented.
-│       ├── swap.js           # Interactive swap script for DirolSwap operations. To be Implemented.
+│   ├── DirolSwap/
+│   │   ├── ABI.js            # Exports the ABI definitions for DirolSwap contracts (to be implemented).
+│   │   ├── liquidity.js      # Script for managing liquidity operations on DirolSwap (to be implemented).
+│   │   ├── swap.js           # Interactive swap script for DirolSwap operations (to be implemented).
+│   │   └── scripts/
+│   │       └── apis.js       # API functions for DirolSwap operations (to be implemented).
+│   └── OrochiNetwork/        # New Module: Orochi Network
+│       ├── index.js          # Main script (check account points, enable nodes via proxies).
+│       ├── tokens.txt        # Bearer tokens, one per line (aligned 1:1 with proxies.txt).
+│       ├── instructions.txt  # Guide explaining how to obtain Orochi bearer tokens.
 │       └── scripts/
-│           └── apis.js       # Contains API functions for DirolSwap operations. To be Implemented.
+│           └── apis.js       # GraphQL helpers for getUserInfo & enableNode (proxy-aware).
 ├── faucets/
 │   ├── official_faucet/
 │   │   ├── claim.js          # Script to claim tokens from the official faucet.
@@ -111,7 +117,7 @@ MonadTestnet/
 │   │   ├── claim.js          # Script to claim tokens from the Morkie faucet (verifies NFT ownership).
 │   │   └── scripts/
 │   │       └── apis.js       # API calls for the Morkie faucet.
-│   ├── owlto_faucet         # To be implemented – Owlto faucet script.
+│   ├── owlto_faucet          # To be implemented – Owlto faucet script.
 │   └── faucet.trade/
 │       ├── add_data.js       # Interactive script to add credentials for the trade faucet.
 │       ├── captcha.js        # Script to handle captcha challenges for faucet trades.
@@ -123,21 +129,21 @@ MonadTestnet/
 │   ├── for_faucet/
 │   │   ├── help.txt          # Help file with instructions on how to use the faucet.
 │   │   ├── deploy.js         # Script to compile and deploy the faucet contract on the testnet.
-│   │   ├── faucetABI.json    # JSON file exporting the ABI definitions and deployed address for the Faucet contract.
-│   │   ├── faucet.sol        # Solidity contract implementing faucet functionalities (deposit, withdrawal, whitelist management, claims).
-│   │   └── transfers.js      # Script for interacting with the Faucet contract (fund transfers, claims, whitelist management).
+│   │   ├── faucetABI.json    # JSON containing ABI and deployed address for the Faucet contract.
+│   │   ├── faucet.sol        # Solidity contract implementing faucet functionalities (deposit, withdrawal, whitelist, claims).
+│   │   └── transfers.js      # Script for interacting with the Faucet contract (fund transfers, claims, whitelist ops).
 │   └── nfts/
-│       └── transfers.js      # Script for managing NFT transfers (minting, burning, and transferring NFTs on the testnet).
-├── utils/                    # Utility modules for common functions and configurations.
+│       └── transfers.js      # Script for managing NFT transfers (minting, burning, transferring on testnet).
+├── utils/
 │   ├── balanceChecker.js     # Script to check wallet balances.
-│   ├── chain.js              # Exports network configuration (RPC_URL, CHAIN_ID, SYMBOL, TX_EXPLORER, etc.).
+│   ├── chain.js              # Network configuration (RPC_URL, CHAIN_ID, SYMBOL, TX_EXPLORER, etc.).
 │   ├── txChecker.js          # Script to monitor transaction statuses.
 │   ├── wallet_aggregator.js  # Script to aggregate wallet data from various sources.
 │   ├── wallet_generator.js   # Script to generate new wallets.
 │   └── wallets.json          # JSON file containing wallet data (id, address, privateKey).
-├── index.js                  # Main entry point with interactive menu and child process execution.
-├── package.json              # npm dependency configuration and scripts.
-├── proxies.txt               # List of proxies (one per line in socks5://login:pass@ip:port format).
+├── index.js                  # Main entry point with interactive menu and child-process execution.
+├── package.json              # npm dependencies and project scripts.
+├── proxies.txt               # Proxy list (one per line, socks5://login:pass@ip:port) matched 1:1 with tokens.txt.
 └── .vscode/
     └── launch.json           # VSCode launch configuration for debugging.
 

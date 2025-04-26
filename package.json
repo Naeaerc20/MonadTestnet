@@ -17,6 +17,7 @@
     "ipfs-http-client": "^60.0.1",
     "oauth-1.0a": "^2.2.6",
     "p-limit": "^2.3.0",
+    "prompt-sync": "^4.2.0",
     "puppeteer": "^24.2.1",
     "readline-sync": "^1.4.10",
     "socks-proxy-agent": "^8.0.5",

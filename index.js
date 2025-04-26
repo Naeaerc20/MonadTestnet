@@ -3,6 +3,7 @@ const figlet = require('figlet');
 const { spawn } = require('child_process');
 const colors = require('colors');
 const clear = require('console-clear');
+const fs = require('fs');
 
 process.on('SIGINT', () => {
   console.log('\nExiting...'.green);
@@ -11,20 +12,14 @@ process.on('SIGINT', () => {
 
 async function pause() {
   await inquirer.prompt([
-    {
-      type: 'input',
-      name: 'continue',
-      message: 'Press ENTER to return to the main menu...',
-    },
+    { type: 'input', name: 'continue', message: 'Press ENTER to return to the main menu...' },
   ]);
 }
 
 function runScript(scriptPath) {
   return new Promise((resolve) => {
     const child = spawn('node', [scriptPath], { stdio: 'inherit' });
-    child.on('close', () => {
-      resolve();
-    });
+    child.on('close', () => resolve());
   });
 }
 
@@ -39,9 +34,10 @@ async function specificAppMenu() {
         { name: '2. MagicEden', value: 'magiceden' },
         { name: '3. Nad.Domains', value: 'naddomains' },
         { name: '4. Manage Faucet', value: 'manageFaucet' },
-        { name: '5. Transfer NFTs', value: 'transferNFTs' }
-      ]
-    }
+        { name: '5. Transfer NFTs', value: 'transferNFTs' },
+        { name: '6. Orochi Network', value: 'orochiNetwork' },
+      ],
+    },
   ]);
 
   if (appChoice === 'nadfun') {
@@ -56,9 +52,9 @@ async function specificAppMenu() {
           { name: '3. Snipe Tokens', value: 'snipeTokens' },
           { name: '4. Launch a Token with Insider Txs', value: 'launchInsider' },
           { name: '5. Swap Tokens [Basic Format]', value: 'basicSwap' },
-          { name: '6. Swap available assets to MON', value: 'liquidateNad' }
-        ]
-      }
+          { name: '6. Swap available assets to MON', value: 'liquidateNad' },
+        ],
+      },
     ]);
     switch (appOption) {
       case 'launchToken':
@@ -96,9 +92,9 @@ async function specificAppMenu() {
         message: 'What would you like to do?',
         choices: [
           { name: '1. Mint NFTs', value: 'mintNFTs' },
-          { name: '2. Deploy NFT Collection', value: 'deployNFT' }
-        ]
-      }
+          { name: '2. Deploy NFT Collection', value: 'deployNFT' },
+        ],
+      },
     ]);
     switch (magicEdenOption) {
       case 'mintNFTs':
@@ -121,6 +117,26 @@ async function specificAppMenu() {
   } else if (appChoice === 'transferNFTs') {
     console.log('Transferring NFTs...'.green);
     await runScript('strategies/nfts/transfers.js');
+  } else if (appChoice === 'orochiNetwork') {
+    const { orochiOption } = await inquirer.prompt([
+      {
+        type: 'list',
+        name: 'orochiOption',
+        message: 'What would you like to do?',
+        choices: [
+          { name: '1. Use the App', value: 'useApp' },
+          { name: '2. How to find Bearer Tokens', value: 'howToBearer' },
+        ],
+      },
+    ]);
+
+    if (orochiOption === 'useApp') {
+      console.log('Launching Orochi Network App...'.green);
+      await runScript('actions/OrochiNetwork/index.js');
+    } else if (orochiOption === 'howToBearer') {
+      const info = fs.readFileSync('actions/OrochiNetwork/instructions.txt', 'utf-8');
+      console.log('\n' + info + '\n');
+    }
   }
   await pause();
 }
@@ -154,7 +170,7 @@ async function mainMenu() {
   ]);
 
   switch (option) {
-    case 'claimFaucet':
+    case 'claimFaucet': {
       const { faucetChoice } = await inquirer.prompt([
         {
           type: 'list',
@@ -182,8 +198,9 @@ async function mainMenu() {
       }
       await pause();
       break;
+    }
 
-    case 'executeSwaps':
+    case 'executeSwaps': {
       const { swapChoice } = await inquirer.prompt([
         {
           type: 'list',
@@ -193,7 +210,7 @@ async function mainMenu() {
             { name: '1. BeanSwap', value: 'beanSwap' },
             { name: '2. Ambient Finance (coming soon...)', value: 'ambientFinance' },
             { name: '3. KuruSwap', value: 'kuruSwap' },
-            { name: '4. OctoSwap', value: 'octoSwap' }
+            { name: '4. OctoSwap', value: 'octoSwap' },
           ],
         },
       ]);
@@ -206,7 +223,7 @@ async function mainMenu() {
             choices: [
               { name: '1. Manual Swaps', value: 'manual' },
               { name: '2. Automatic Swaps', value: 'automatic' },
-              { name: '3. Swap all assets for MON', value: 'liquidateBean' }
+              { name: '3. Swap all assets for MON', value: 'liquidateBean' },
             ],
           },
         ]);
@@ -250,7 +267,7 @@ async function mainMenu() {
             choices: [
               { name: '1. Manual Swaps', value: 'manual' },
               { name: '2. Automatic Swaps', value: 'automatic' },
-              { name: '3. Swap all assets for MON', value: 'liquidateOcto' }
+              { name: '3. Swap all assets for MON', value: 'liquidateOcto' },
             ],
           },
         ]);
@@ -267,13 +284,14 @@ async function mainMenu() {
       }
       await pause();
       break;
+    }
 
     case 'manageLiquidity':
       console.log('Feature coming soon...'.green);
       await pause();
       break;
 
-    case 'stakeAssets':
+    case 'stakeAssets': {
       const { stakeChoice } = await inquirer.prompt([
         {
           type: 'list',
@@ -283,7 +301,7 @@ async function mainMenu() {
             { name: '1. Multipli', value: 'multipli' },
             { name: '2. Apriori', value: 'apriori' },
             { name: '3. Kintzu', value: 'kintzu' },
-            { name: '4. Magma', value: 'magma' }
+            { name: '4. Magma', value: 'magma' },
           ],
         },
       ]);
@@ -310,6 +328,7 @@ async function mainMenu() {
       }
       await pause();
       break;
+    }
 
     case 'deployContract':
       console.log('Launching Deploy Contract...'.green);
@@ -333,7 +352,7 @@ async function mainMenu() {
       await specificAppMenu();
       break;
 
-    case 'checkWalletStuff':
+    case 'checkWalletStuff': {
       const { walletInfo } = await inquirer.prompt([
         {
           type: 'list',
@@ -342,7 +361,7 @@ async function mainMenu() {
           choices: [
             { name: "1. Number of Tx's Made", value: 'txCount' },
             { name: '2. Current Balance Amount', value: 'balance' },
-            { name: '3. Check NFTs Owneds', value: 'nftOwned' }
+            { name: '3. Check NFTs Owneds', value: 'nftOwned' },
           ],
         },
       ]);
@@ -358,6 +377,7 @@ async function mainMenu() {
       }
       await pause();
       break;
+    }
 
     case 'exit':
       console.log('Exiting...'.green);

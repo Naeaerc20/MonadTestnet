@@ -1,0 +1,8 @@
+HOW TO GET YOUR BEARER TOKEN ?
+
+1. Please go direct to "https://onprover.orochi.network/?referralCode=LHyB_Naeaex"
+2. Create & Register an account + Connect your Wallet
+3. Press F12 and watch the request that are appearing, select any of them called "graphql"
+4. Copy the token you see after the word "Bearer" in "Authorization" I should look like "eyJhbGciOiJIUzI..." each line means 1 token
+5. Paste them into "actions/OrochiNetwork/tokens.txt", make sure you have proxies from 2CAPTCHA on "proxies.txt"
+6. Run the script!
